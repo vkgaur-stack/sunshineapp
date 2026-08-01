@@ -1,0 +1,344 @@
+// Sunshine Social Foundation — Data Model
+// Run `npx prisma migrate dev` after setting DATABASE_URL in .env
+//
+// NOTE: this schema targets MySQL (matching a typical shared cPanel
+// hosting environment). If you later move the backend to a host that
+// prefers PostgreSQL, switch `provider` below back to "postgresql" and
+// re-add `mode: 'insensitive'` to the two case-insensitive city filters
+// in beneficiary.controller.js and camp.controller.js — MySQL's default
+// collation (utf8mb4_general_ci / utf8mb4_unicode_ci) is already
+// case-insensitive, so those queries work correctly without that option
+// here, but Prisma only supports `mode: 'insensitive'` on Postgres/MongoDB.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum AdminRole {
+  SUPER_ADMIN
+  CAMP_COORDINATOR
+  FINANCE
+}
+
+enum AppointmentStatus {
+  REQUESTED
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum DonationStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  REFUNDED
+}
+
+enum ContactMethod {
+  PHONE
+  WHATSAPP
+  EMAIL
+}
+
+enum CouponStatus {
+  ISSUED
+  ASSIGNED
+  REDEEMED
+  EXPIRED
+  CANCELLED
+}
+
+enum NotificationChannel {
+  WHATSAPP
+  SMS
+  EMAIL
+}
+
+enum NotificationStatus {
+  QUEUED
+  SENT
+  FAILED
+}
+
+// A person seeking services. Identity for login is mobile + date of birth
+// (no password required — matches the low-friction, elderly-friendly UX goal).
+model Beneficiary {
+  id              String        @id @default(uuid())
+  fullName        String
+  dateOfBirth     DateTime
+  gender          String
+  mobileNumber    String        @unique
+  email           String?
+  addressLine     String?
+  city            String
+  state           String
+  serviceInterest String?
+  problemNotes    String?  @db.Text
+  preferredContact ContactMethod @default(WHATSAPP)
+  consentGiven    Boolean       @default(false)
+  consentAt       DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  appointments Appointment[]
+  coupons      Coupon[]
+
+  @@index([mobileNumber])
+  @@index([city])
+}
+
+model Service {
+  id          String   @id @default(uuid())
+  name        String
+  description String
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  appointments Appointment[]
+  coupons      Coupon[]
+}
+
+model Camp {
+  id          String   @id @default(uuid())
+  title       String
+  city        String
+  locality    String?
+  venueDetails String?
+  startAt     DateTime
+  endAt       DateTime
+  capacity    Int?
+  isPublished Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  appointments Appointment[]
+}
+
+model Appointment {
+  id            String             @id @default(uuid())
+  beneficiary   Beneficiary        @relation(fields: [beneficiaryId], references: [id])
+  beneficiaryId String
+  service       Service            @relation(fields: [serviceId], references: [id])
+  serviceId     String
+  camp          Camp?              @relation(fields: [campId], references: [id])
+  campId        String?
+  preferredDate DateTime
+  timeSlot      String
+  notes         String?  @db.Text
+  status        AppointmentStatus  @default(REQUESTED)
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  coupon        Coupon?
+
+  @@index([beneficiaryId])
+  @@index([status])
+}
+
+model Donor {
+  id           String     @id @default(uuid())
+  fullName     String
+  mobileNumber String
+  email        String?
+  panNumber    String?
+  createdAt    DateTime   @default(now())
+
+  donations Donation[]
+}
+
+model Donation {
+  id                String         @id @default(uuid())
+  donor             Donor          @relation(fields: [donorId], references: [id])
+  donorId           String
+  amountInPaise     Int
+  purpose           String         @default("General Fund")
+  status            DonationStatus @default(PENDING)
+  razorpayOrderId   String?        @unique
+  razorpayPaymentId String?
+  receiptNumber     String?        @unique
+  receiptSentAt     DateTime?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  coupons Coupon[]
+
+  @@index([status])
+}
+
+model AdminUser {
+  id           String    @id @default(uuid())
+  fullName     String
+  email        String    @unique
+  passwordHash String
+  role         AdminRole @default(CAMP_COORDINATOR)
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+}
+
+// Partner/CSR/Volunteer requests submitted via "Get Involved"
+model PartnerRequest {
+  id           String   @id @default(uuid())
+  category     String   // CSR_PARTNER | MEDICAL_PARTNER | VOLUNTEER | DONOR | COMMUNITY_PARTNER
+  orgOrName    String
+  contactName  String
+  mobileNumber String
+  email        String?
+  message      String?  @db.Text
+  status       String   @default("NEW") // NEW | CONTACTED | CLOSED
+  createdAt    DateTime @default(now())
+}
+
+model ContactMessage {
+  id           String   @id @default(uuid())
+  fullName     String
+  mobileNumber String
+  email        String?
+  subject      String?
+  message      String   @db.Text
+  status       String   @default("NEW")
+  createdAt    DateTime @default(now())
+}
+
+// --- Phase 2: Partner Clinic Network & Coupon/Subsidy Engine ---
+
+model Clinic {
+  id            String   @id @default(uuid())
+  name          String
+  city          String
+  address       String?
+  contactPerson String?
+  mobileNumber  String?
+  email         String?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+
+  users            ClinicUser[]
+  redeemedCoupons  Coupon[]
+}
+
+// A staff login for a partner clinic — scoped to that clinic only, separate
+// from the NGO's own AdminUser accounts (different trust boundary).
+model ClinicUser {
+  id           String   @id @default(uuid())
+  clinic       Clinic   @relation(fields: [clinicId], references: [id])
+  clinicId     String
+  fullName     String
+  email        String   @unique
+  passwordHash String
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+}
+
+// Implements the donor -> NGO -> beneficiary -> clinic subsidy loop
+// documented in the foundation's own process design (25/75 split):
+// a coupon is generated against a donation, optionally assigned to a
+// beneficiary, then redeemed at a partner clinic which validates it and
+// delivers the service.
+model Coupon {
+  id             String       @id @default(uuid())
+  code           String       @unique // e.g. SSF-2026-000123
+
+  donation       Donation?    @relation(fields: [donationId], references: [id])
+  donationId     String?
+
+  beneficiary    Beneficiary? @relation(fields: [beneficiaryId], references: [id])
+  beneficiaryId  String?
+
+  service        Service      @relation(fields: [serviceId], references: [id])
+  serviceId      String
+
+  appointment    Appointment? @relation(fields: [appointmentId], references: [id])
+  appointmentId  String?      @unique
+
+  subsidyPercent Int          @default(75)
+  valueInPaise   Int?         // subsidised value the NGO covers for this coupon
+
+  status         CouponStatus @default(ISSUED)
+  issuedAt       DateTime     @default(now())
+  expiresAt      DateTime
+
+  redeemedAt         DateTime?
+  redeemedAtClinic   Clinic?  @relation(fields: [redeemedClinicId], references: [id])
+  redeemedClinicId   String?
+  redeemedByUserId   String?  // ClinicUser.id of the staff member who validated it
+
+  createdAt      DateTime     @default(now())
+
+  @@index([status])
+  @@index([beneficiaryId])
+  @@index([donationId])
+}
+
+// --- Phase 3: Communication Automation ---
+
+// A record of every outbound WhatsApp/SMS/Email attempt. This is what makes
+// "did the beneficiary actually get notified?" answerable, and gives the
+// admin dashboard a debuggable log instead of a black box.
+model NotificationLog {
+  id               String              @id @default(uuid())
+  channel          NotificationChannel
+  toAddress        String              // phone number or email actually used
+  templateType     String              // e.g. APPOINTMENT_CONFIRMED, CAMP_ANNOUNCEMENT
+  relatedType      String?             // 'Appointment' | 'Donation' | 'Coupon' | 'Camp'
+  relatedId        String?
+  status           NotificationStatus  @default(QUEUED)
+  providerResponse String?             // raw provider response or error, for debugging
+  createdAt        DateTime            @default(now())
+  sentAt           DateTime?
+
+  @@index([status])
+  @@index([channel])
+  @@index([relatedType, relatedId])
+}
+
+// --- Phase 4: Compliance & Integration Hardening ---
+
+// A single-row settings table holding every piece of compliance-critical
+// and contact info the site displays (registration numbers, bank/UPI
+// details, office contact info, social links). Centralizing this means an
+// admin edits it once instead of it being scattered as hardcoded text
+// placeholders across the Footer, About, Contact, and Donate pages.
+model OrgSettings {
+  id                 String   @id @default(uuid())
+  organizationName   String   @default("Sunshine Social Foundation")
+  registrationNumber String?
+  ngoDarpanId        String?
+  panNumber          String?
+  tanNumber          String?
+  eightyGNumber      String?
+  registeredAddress  String?  @db.Text
+  officeAddress      String?  @db.Text
+  officeHours        String?
+  phone              String?
+  whatsappNumber     String?
+  email              String?
+  bankAccountName    String?
+  bankAccountNumber  String?
+  bankIfsc           String?
+  bankName           String?
+  upiId              String?
+  facebookUrl        String?
+  instagramUrl       String?
+  youtubeUrl         String?
+  updatedAt          DateTime @updatedAt
+}
+
+// Scoped, revocable credentials for external systems (accounting software,
+// a future mobile app, a CSR partner's own dashboard) to pull data via the
+// API without an admin/clinic login. This is the concrete mechanism behind
+// "open for future integration" — a new integration is a new key with the
+// narrowest scope it needs, not a code change.
+model ApiKey {
+  id         String    @id @default(uuid())
+  label      String    // e.g. "Zoho Books sync", "CSR Partner: Acme Corp"
+  keyPrefix  String    // first 8 chars of the key, shown in the admin list for identification
+  keyHash    String    @unique // sha256 hash of the full key — the raw key is never stored
+  scopes     String    // comma-separated, e.g. "donations:read,impact:read"
+  isActive   Boolean   @default(true)
+  createdAt  DateTime  @default(now())
+  lastUsedAt DateTime?
+}
