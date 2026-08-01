@@ -40,6 +40,26 @@ API_URL="$SITE_URL/api"
 echo "Building for: $SITE_URL"
 echo "API will be at: $API_URL"
 echo ""
+echo "========== DEBUG =========="
+echo "Current Directory:"
+pwd
+echo ""
+
+echo "Script Location:"
+dirname "$0"
+echo ""
+
+echo "Files in current directory:"
+ls -la
+echo ""
+
+echo "Files where script is:"
+ls -la "$(dirname "$0")"
+echo ""
+
+echo "Looking for frontend:"
+find . -maxdepth 2 -type d
+echo "==========================="
 
 cd "$(dirname "$0")/frontend"
 npm install --no-audit --no-fund
