@@ -1,0 +1,40 @@
+name: Build Deployment Package
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Verify Repository
+        run: |
+          pwd
+          ls -la
+          node -v
+          npm -v
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Build Deployment Package
+        run: |
+          chmod +x deploy.sh
+          ./deploy.sh sunshinesocial.org
+
+      - name: Upload Deployment Package
+        uses: actions/upload-artifact@v4
+        with:
+          name: deploy_package
+          path: deploy_package
