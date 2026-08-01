@@ -31,7 +31,7 @@ jobs:
       - name: Build Deployment Package
         run: |
           chmod +x deploy.sh
-          ./deploy.sh sunshinesocial.org
+           ./deploy.sh sunshinesocial.org New_portal
 
       - name: Upload Deployment Package
         uses: actions/upload-artifact@v4
