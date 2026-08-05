@@ -263,3 +263,13 @@ CREATE TABLE IF NOT EXISTS api_keys (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 SET FOREIGN_KEY_CHECKS = 1;
+
+-- ============================================================
+-- Social Feed Cache (Facebook/Instagram) — Phase: Social Integration
+-- ============================================================
+CREATE TABLE IF NOT EXISTS social_feed_cache (
+  platform    VARCHAR(20)  NOT NULL PRIMARY KEY, -- 'FACEBOOK' or 'INSTAGRAM'
+  payload     TEXT         NOT NULL,             -- JSON array of normalized posts
+  fetched_at  DATETIME     NOT NULL,
+  error       TEXT         NULL                  -- last fetch error, if any (for admin visibility)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

@@ -227,3 +227,49 @@ hosting — be aware these are two independent implementations against
 compatible schemas, not one codebase with two adapters. A change to
 business logic (e.g. a new validation rule) needs to be made in both
 places if you want to keep them behaviorally identical.
+
+## Facebook/Instagram Feed
+
+`GET /social-feed/list.php` (public) returns cached posts from both
+platforms, powering the Social page and Home page media section. Works
+gracefully with zero configuration — shows empty results, no errors,
+until you connect real credentials.
+
+**One-time setup** (in your Meta Developer dashboard — see the full
+walkthrough in `lib/socialFeed.php`):
+1. Instagram account must be Business/Creator, linked to a Facebook Page
+2. Create a Meta Developer App, add the Instagram Graph API product
+3. Generate a long-lived Page Access Token (~60 days, needs periodic renewal)
+4. Set `FACEBOOK_PAGE_ID`, `FACEBOOK_PAGE_ACCESS_TOKEN`,
+   `INSTAGRAM_BUSINESS_ACCOUNT_ID` in `.env`
+
+**Test your credentials** once set:
+```bash
+php scripts/refresh-social-feed.php
+```
+Prints a clear success/error message per platform — the fastest way to
+confirm your token and IDs are correct before checking the live site.
+
+Posts are cached for 60 minutes (`lib/socialFeedCache.php`) — if a Graph
+API call ever fails (expired token, rate limit), the *previous* cached
+posts stay showing rather than the page going blank; only the error gets
+logged for admin visibility.
+
+## Hero Media Carousel (Home Page)
+
+`GET /media-hero/list.php` (public) powers the rotating photo/video
+banner in the homepage hero, which replaced the impact-stats cards there.
+
+**No admin UI, no upload form — just a folder.** Create
+`public_html/media/hero/` once via File Manager (a sibling to `public_html/api/`,
+**not** inside it — this is deliberate, so neither an `api/` redeploy nor
+a frontend rebuild can ever touch or wipe out uploaded media). From then
+on, dropping image/video files directly into that folder is the entire
+publishing workflow — no code change, no redeploy, nothing to run.
+
+- Supported: `.jpg .jpeg .png .webp .gif` (images), `.mp4 .webm .mov` (video)
+- **Ordering:** alphabetical by filename — prefix with numbers to control
+  rotation order, e.g. `01-camp-photo.jpg`, `02-therapy-video.mp4`,
+  `03-team-photo.jpg`
+- Empty or missing folder degrades gracefully (a friendly placeholder
+  message, not an error) — verified in testing
