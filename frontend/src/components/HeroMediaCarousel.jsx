@@ -13,7 +13,9 @@ const SLIDE_DURATION_MS = 6000;
 export default function HeroMediaCarousel() {
   const [items, setItems] = useState(null);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [isMuted, setIsMuted] = useState(true);
   const timerRef = useRef(null);
+  const videoRef = useRef(null);
 
   useEffect(() => {
     fetch(`${API_BASE_URL}/media-hero/list.php`)
@@ -22,15 +24,46 @@ export default function HeroMediaCarousel() {
       .catch(() => setItems([]));
   }, []);
 
+  // Auto-advance on a timer — but NOT while the visitor has deliberately
+  // unmuted a video to listen to it. Cutting off an important announcement
+  // mid-sentence because a fixed timer fired would defeat the whole point
+  // of adding sound support.
+  //
+  // Depends on activeIndex too (not just items/isMuted) so the timer
+  // restarts fresh on every slide change — otherwise a muted video
+  // shorter than SLIDE_DURATION_MS could finish and advance early via
+  // handleVideoEnded, while the OLD timer (still counting toward the
+  // previous slide) fires moments later and causes an extra, unwanted skip.
   useEffect(() => {
-    if (!items || items.length <= 1) return;
+    if (!items || items.length <= 1 || !isMuted) return;
 
     timerRef.current = setInterval(() => {
       setActiveIndex((prev) => (prev + 1) % items.length);
     }, SLIDE_DURATION_MS);
 
     return () => clearInterval(timerRef.current);
-  }, [items]);
+  }, [items, isMuted, activeIndex]);
+
+  // Every time the active slide changes, reset to muted — so unmuting one
+  // video doesn't carry over and cause the NEXT video to unexpectedly
+  // autoplay with sound (which browsers would block anyway, but this
+  // keeps the intent clean: each video starts silent until clicked).
+  useEffect(() => {
+    setIsMuted(true);
+  }, [activeIndex]);
+
+  function toggleMute() {
+    if (videoRef.current) {
+      videoRef.current.muted = !videoRef.current.muted;
+      setIsMuted(videoRef.current.muted);
+    }
+  }
+
+  function handleVideoEnded() {
+    if (!items || items.length <= 1) return;
+    setIsMuted(true); // resume normal rotation
+    setActiveIndex((prev) => (prev + 1) % items.length);
+  }
 
   if (items === null) {
     return (
@@ -56,11 +89,13 @@ export default function HeroMediaCarousel() {
       {current.type === 'video' ? (
         <video
           key={current.url}
+          ref={videoRef}
           src={current.url}
           autoPlay
           muted
-          loop
+          loop={false}
           playsInline
+          onEnded={handleVideoEnded}
           className="w-full h-full object-cover"
         />
       ) : (
@@ -71,6 +106,30 @@ export default function HeroMediaCarousel() {
           alt="Sunshine Social Foundation — recent activity"
           className="w-full h-full object-cover"
         />
+      )}
+
+      {current.type === 'video' && (
+        <button
+          onClick={toggleMute}
+          aria-label={isMuted ? 'Unmute video' : 'Mute video'}
+          className="absolute top-3 right-3 h-9 w-9 rounded-full bg-navy/70 hover:bg-navy/90 transition-colors flex items-center justify-center text-cream"
+        >
+          {isMuted ? (
+            // Muted (speaker-off) icon
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+              <line x1="23" y1="9" x2="17" y2="15" />
+              <line x1="17" y1="9" x2="23" y2="15" />
+            </svg>
+          ) : (
+            // Unmuted (speaker-on) icon
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+              <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+              <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+            </svg>
+          )}
+        </button>
       )}
 
       {items.length > 1 && (
