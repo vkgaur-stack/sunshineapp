@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../lib/response.php';
 require_once __DIR__ . '/../lib/auth.php';
+require_once __DIR__ . '/../lib/case.php';
 
 applyCommonHeaders();
 requireMethod('GET');
@@ -12,7 +13,7 @@ $status = $_GET['status'] ?? null;
 $beneficiaryId = $_GET['beneficiaryId'] ?? null;
 
 $sql = '
-    SELECT c.*, s.name AS service_name, b.full_name AS beneficiary_name,
+    SELECT c.*, s.name AS service_name, b.full_name AS beneficiary_full_name,
            cl.name AS redeemed_clinic_name
     FROM coupons c
     JOIN services s ON s.id = c.service_id
@@ -33,6 +34,23 @@ $sql .= ' ORDER BY c.created_at DESC LIMIT 300';
 
 $stmt = $db->prepare($sql);
 $stmt->execute($params);
-$coupons = $stmt->fetchAll();
+$rows = $stmt->fetchAll();
+
+// The frontend (CouponsPanel) expects nested objects — c.service.name,
+// c.beneficiary.fullName, c.redeemedAtClinic.name — not the flat joined
+// columns SQL naturally produces. Reshape each row accordingly, on top of
+// the usual snake_case -> camelCase conversion.
+$coupons = array_map(function ($row) {
+    $coupon = rowToCamelCase($row);
+    $coupon['service'] = ['name' => $row['service_name']];
+    $coupon['beneficiary'] = $row['beneficiary_id']
+        ? ['fullName' => $row['beneficiary_full_name']]
+        : null;
+    $coupon['redeemedAtClinic'] = $row['redeemed_clinic_id']
+        ? ['name' => $row['redeemed_clinic_name']]
+        : null;
+    unset($coupon['serviceName'], $coupon['beneficiaryFullName'], $coupon['redeemedClinicName']);
+    return $coupon;
+}, $rows);
 
 jsonResponse(['coupons' => $coupons, 'count' => count($coupons)]);
