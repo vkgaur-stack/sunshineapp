@@ -2,7 +2,7 @@ import ImpactContent from './ImpactContent';
 
 export const metadata = {
   title: 'Our Impact',
-  description: 'Live, auto-calculated impact metrics from Sunshine Social Foundation.',
+  description: 'Monthly impact metrics from Sunshine Social Foundation, browsable by month and year.',
 };
 
 export default function ImpactPage() {

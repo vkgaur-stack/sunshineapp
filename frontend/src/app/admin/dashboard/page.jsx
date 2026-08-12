@@ -10,12 +10,13 @@ import NotificationsPanel from './NotificationsPanel';
 import SettingsPanel from './SettingsPanel';
 import ReportsPanel from './ReportsPanel';
 import ServicesPanel from './ServicesPanel';
+import ImpactPanel from './ImpactPanel';
 
 const tabs = [
   'Beneficiaries', 'Appointments', 'Donations', 'Coupons', 'Clinics',
-  'Camps', 'Notifications', 'Reports', 'Settings', 'Services', 'Partner Requests', 'Contact Messages',
+  'Camps', 'Notifications', 'Reports', 'Settings', 'Services', 'Impact', 'Partner Requests', 'Contact Messages',
 ];
-const selfManagedTabs = ['Coupons', 'Clinics', 'Camps', 'Notifications', 'Reports', 'Settings', 'Services'];
+const selfManagedTabs = ['Coupons', 'Clinics', 'Camps', 'Notifications', 'Reports', 'Settings', 'Services', 'Impact'];
 
 export default function AdminDashboardPage() {
   const router = useRouter();
@@ -106,6 +107,8 @@ export default function AdminDashboardPage() {
           <SettingsPanel token={token} />
         ) : activeTab === 'Services' ? (
           <ServicesPanel token={token} />
+        ) : activeTab === 'Impact' ? (
+          <ImpactPanel token={token} />
         ) : loading ? (
           <p className="text-sm text-ink/60">Loading…</p>
         ) : rows.length === 0 ? (

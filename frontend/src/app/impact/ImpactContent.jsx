@@ -3,34 +3,68 @@
 import { useEffect, useState } from 'react';
 import { api } from '../../lib/api';
 
-const placeholderMetrics = [
-  { label: 'Beneficiaries Served', value: '—' },
-  { label: 'Sessions Completed', value: '—' },
-  { label: 'Health Camps Held', value: '—' },
-  { label: 'Subsidy Delivered', value: '—' },
-  { label: 'Cities Reached', value: '—' },
-  { label: 'Coupons Redeemed', value: '—' },
+const monthNames = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
 ];
 
-// Client-side data fetching (converted from a Server Component) so this
-// works on static-export/PHP-only hosting.
+// Impact numbers are entered manually by an admin each month (see
+// /admin > Impact) rather than live-computed, so what's shown here is
+// always a deliberate, reviewed snapshot. Visitors can browse past months
+// via the selector below.
 export default function ImpactContent() {
-  const [stats, setStats] = useState(null);
+  const [months, setMonths] = useState([]); // [{month, year}, ...] newest first
+  const [selected, setSelected] = useState(null); // {month, year}
+  const [data, setData] = useState(null);
+  const [status, setStatus] = useState('loading'); // loading | ready | empty
 
   useEffect(() => {
-    api.getImpactStats().then(setStats).catch(() => setStats(null));
+    api.getImpactMonths()
+      .then(({ months }) => {
+        setMonths(months || []);
+        if (months && months.length > 0) {
+          setSelected({ month: months[0].month, year: months[0].year });
+        } else {
+          setStatus('empty');
+        }
+      })
+      .catch(() => setStatus('empty'));
   }, []);
 
-  const metrics = stats
+  useEffect(() => {
+    if (!selected) return;
+    setStatus('loading');
+    api.getImpactStats(selected.month, selected.year)
+      .then(({ found, metrics }) => {
+        if (found) {
+          setData(metrics);
+          setStatus('ready');
+        } else {
+          setData(null);
+          setStatus('empty');
+        }
+      })
+      .catch(() => {
+        setData(null);
+        setStatus('empty');
+      });
+  }, [selected]);
+
+  const metrics = data
     ? [
-        { label: 'Beneficiaries Served', value: `${stats.beneficiariesServed}+` },
-        { label: 'Sessions Completed', value: String(stats.sessionsCompleted) },
-        { label: 'Health Camps Held', value: String(stats.campsHeld) },
-        { label: 'Subsidy Delivered', value: `₹${stats.subsidyDeliveredInRupees.toLocaleString('en-IN')}` },
-        { label: 'Cities Reached', value: String(stats.citiesServed) },
-        { label: 'Coupons Redeemed', value: String(stats.couponsRedeemed) },
+        { label: 'Beneficiaries Served', value: `${data.beneficiariesServed}+` },
+        { label: 'Sessions Completed', value: String(data.sessionsCompleted) },
+        { label: 'Health Camps Held', value: String(data.campsHeld) },
+        { label: 'Subsidy Delivered', value: `₹${data.subsidyDeliveredInRupees.toLocaleString('en-IN')}` },
+        { label: 'Cities Reached', value: String(data.citiesServed) },
+        { label: 'Coupons Redeemed', value: String(data.couponsRedeemed) },
       ]
-    : placeholderMetrics;
+    : [];
+
+  const years = [...new Set(months.map((m) => m.year))].sort((a, b) => b - a);
+  const monthsForSelectedYear = selected
+    ? months.filter((m) => m.year === selected.year).map((m) => m.month).sort((a, b) => b - a)
+    : [];
 
   return (
     <div>
@@ -44,28 +78,57 @@ export default function ImpactContent() {
       </section>
 
       <section className="container-page py-14">
-        <div className="flex items-center gap-2 mb-6">
-          <span className="h-2 w-2 rounded-full bg-teal animate-pulse" aria-hidden="true" />
-          <p className="text-xs text-teal uppercase tracking-widest">
-            Live data — updates automatically as camps and donations happen
-          </p>
-        </div>
-        <div className="grid gap-4 md:grid-cols-3">
-          {metrics.map((metric) => (
-            <div key={metric.label} className="rounded-soft border border-sun-soft p-6 text-center bg-white">
-              <p className="font-display text-3xl text-clay">{metric.value}</p>
-              <p className="mt-2 text-sm text-ink/70">{metric.label}</p>
-            </div>
-          ))}
-        </div>
-        {!stats && (
-          <p className="mt-6 text-xs text-ink/50">
-            [ Live stats loading — or check that the backend API is running. ]
-          </p>
+        {months.length > 0 && selected && (
+          <div className="flex flex-wrap items-center gap-3 mb-8">
+            <label className="text-sm text-navy" htmlFor="impact-month">Showing:</label>
+            <select
+              id="impact-month"
+              value={selected.month}
+              onChange={(e) => setSelected((prev) => ({ ...prev, month: Number(e.target.value) }))}
+              className="rounded-lg border border-navy/20 px-3 py-2 text-sm"
+            >
+              {monthsForSelectedYear.map((m) => (
+                <option key={m} value={m}>{monthNames[m - 1]}</option>
+              ))}
+            </select>
+            <select
+              value={selected.year}
+              onChange={(e) => {
+                const year = Number(e.target.value);
+                const firstMonthForYear = months.find((m) => m.year === year)?.month;
+                setSelected({ year, month: firstMonthForYear });
+              }}
+              className="rounded-lg border border-navy/20 px-3 py-2 text-sm"
+            >
+              {years.map((y) => <option key={y} value={y}>{y}</option>)}
+            </select>
+          </div>
         )}
-        {stats && (
-          <p className="mt-6 text-xs text-ink/40">
-            Last updated: {new Date(stats.lastUpdated).toLocaleString('en-IN')}
+
+        {status === 'ready' && data && (
+          <>
+            <div className="grid gap-4 md:grid-cols-3">
+              {metrics.map((metric) => (
+                <div key={metric.label} className="rounded-soft border border-sun-soft p-6 text-center bg-white">
+                  <p className="font-display text-3xl text-clay">{metric.value}</p>
+                  <p className="mt-2 text-sm text-ink/70">{metric.label}</p>
+                </div>
+              ))}
+            </div>
+            <p className="mt-6 text-xs text-ink/40">
+              {monthNames[data.month - 1]} {data.year} · Last updated:{' '}
+              {new Date(data.updatedAt).toLocaleString('en-IN')}
+            </p>
+          </>
+        )}
+
+        {status === 'loading' && (
+          <p className="text-sm text-ink/60">Loading impact data…</p>
+        )}
+
+        {status === 'empty' && (
+          <p className="text-sm text-ink/60">
+            Impact data for this period will be updated soon — check back shortly.
           </p>
         )}
       </section>

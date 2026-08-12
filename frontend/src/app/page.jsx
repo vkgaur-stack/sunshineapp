@@ -4,7 +4,11 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import SunriseArc from '../components/SunriseArc';
 import HeroMediaCarousel from '../components/HeroMediaCarousel';
+import DonateButton from '../components/DonateButton';
 import { api } from '../lib/api';
+
+// Registration now happens entirely inside the Beneficiary module.
+const BENEFICIARY_URL = 'https://www.sunshinesocial.org/Beneficiary/views/shared/login.php';
 
 const problems = [
   '70% of elderly Indians have never had a professional health screening.',
@@ -57,12 +61,14 @@ export default function HomePage() {
             </p>
 
             <div className="mt-8 flex flex-wrap gap-4">
-              <Link
-                href="/appointments"
+              <a
+                href={BENEFICIARY_URL}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="px-6 py-3 rounded-full bg-clay text-white font-body hover:bg-clay-dark transition-colors"
               >
-                Book Appointment
-              </Link>
+                Register as Beneficiary
+              </a>
               <Link
                 href="/donate"
                 className="px-6 py-3 rounded-full border border-cream/40 text-cream font-body hover:bg-cream/10 transition-colors"
@@ -171,13 +177,8 @@ export default function HomePage() {
               health camp for 80 senior citizens. All donations are 80G tax-exempt.
             </p>
           </div>
-          <div className="flex gap-3 flex-shrink-0">
-            <Link
-              href="/donate"
-              className="px-6 py-3 rounded-full bg-white text-clay font-body hover:bg-cream transition-colors"
-            >
-              Donate Now
-            </Link>
+          <div className="flex flex-wrap items-center gap-3 flex-shrink-0">
+            <DonateButton id="home-cta" />
             <Link
               href="/get-involved"
               className="px-6 py-3 rounded-full border border-white/70 text-white font-body hover:bg-white/10 transition-colors"

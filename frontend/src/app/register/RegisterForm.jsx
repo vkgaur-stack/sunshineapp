@@ -1,8 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
 import { api } from '../../lib/api';
+
+// Appointment booking now happens entirely inside the Beneficiary module.
+const BENEFICIARY_URL = 'https://www.sunshinesocial.org/Beneficiary/views/shared/login.php';
 
 const initialForm = {
   fullName: '',
@@ -52,12 +54,14 @@ export default function RegisterForm() {
           will use these to book an appointment.
         </p>
         <p className="mt-2 text-xs text-ink/50">Reference ID: {beneficiaryId}</p>
-        <Link
-          href="/appointments"
+        <a
+          href={BENEFICIARY_URL}
+          target="_blank"
+          rel="noopener noreferrer"
           className="mt-4 inline-block px-6 py-3 rounded-full bg-clay text-white font-body hover:bg-clay-dark transition-colors"
         >
           Book an Appointment Now
-        </Link>
+        </a>
       </div>
     );
   }

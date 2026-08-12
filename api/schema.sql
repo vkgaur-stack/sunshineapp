@@ -273,3 +273,32 @@ CREATE TABLE IF NOT EXISTS social_feed_cache (
   fetched_at  DATETIME     NOT NULL,
   error       TEXT         NULL                  -- last fetch error, if any (for admin visibility)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ============================================================
+-- Impact Metrics (manually entered by admin, per month/year)
+-- ============================================================
+-- The public "Our Impact" page used to live-compute these numbers
+-- straight from the beneficiaries/appointments/coupons tables. That's now
+-- replaced by a deliberate monthly entry an admin reviews and saves via
+-- /admin > Impact — so the public page always shows a reviewed snapshot,
+-- selectable by month/year, instead of raw in-progress counts.
+--
+-- This CREATE TABLE IF NOT EXISTS is safe to run against an existing
+-- production database — re-running this whole schema.sql file (or just
+-- this one statement) only adds this new table; it does not touch any
+-- existing table or data.
+CREATE TABLE IF NOT EXISTS impact_metrics (
+  id                            CHAR(36)     NOT NULL PRIMARY KEY,
+  metric_month                  TINYINT      NOT NULL, -- 1-12
+  metric_year                   SMALLINT     NOT NULL, -- e.g. 2026
+  beneficiaries_served          INT          NOT NULL DEFAULT 0,
+  sessions_completed            INT          NOT NULL DEFAULT 0,
+  camps_held                    INT          NOT NULL DEFAULT 0,
+  subsidy_delivered_in_rupees   INT          NOT NULL DEFAULT 0,
+  cities_served                 INT          NOT NULL DEFAULT 0,
+  coupons_redeemed              INT          NOT NULL DEFAULT 0,
+  updated_by                    VARCHAR(191) NULL,
+  created_at                    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at                    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uniq_impact_month_year (metric_month, metric_year)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

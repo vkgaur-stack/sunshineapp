@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import DonateForm from './DonateForm';
+import DonateButton from '../../components/DonateButton';
 import { api } from '../../lib/api';
 
 // Client-side data fetching (converted from a Server Component) so this
@@ -27,10 +28,20 @@ export default function DonateContent() {
             ₹25,000 sponsors an entire health camp for 80 senior citizens.
             All donations are 80G tax-exempt.
           </p>
+          <div className="mt-6">
+            <p className="text-xs text-white/70 mb-2">Quick donate:</p>
+            <DonateButton id="donate-page" />
+          </div>
         </div>
       </section>
       <section className="container-page py-14 grid gap-10 md:grid-cols-2">
-        <DonateForm />
+        <div>
+          <p className="text-sm text-ink/60 mb-4">
+            Prefer to choose an amount and purpose, or need a PAN-linked 80G
+            receipt? Use the detailed form below.
+          </p>
+          <DonateForm />
+        </div>
         <div className="space-y-6">
           <div className="rounded-soft border border-navy/15 p-6">
             <h2 className="font-display text-lg text-navy">UPI / Google Pay / PhonePe</h2>

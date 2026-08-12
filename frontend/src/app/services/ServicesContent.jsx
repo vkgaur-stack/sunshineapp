@@ -1,8 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { api } from '../../lib/api';
+
+// Registration now happens entirely inside the Beneficiary module.
+const BENEFICIARY_URL = 'https://www.sunshinesocial.org/Beneficiary/views/shared/login.php';
 
 const placeholderServices = [
   {
@@ -61,18 +63,14 @@ export default function ServicesContent() {
         </div>
 
         <div className="mt-10 flex flex-wrap gap-4">
-          <Link
-            href="/appointments"
+          <a
+            href={BENEFICIARY_URL}
+            target="_blank"
+            rel="noopener noreferrer"
             className="px-6 py-3 rounded-full bg-clay text-white font-body hover:bg-clay-dark transition-colors"
           >
-            Book an Appointment
-          </Link>
-          <Link
-            href="/register"
-            className="px-6 py-3 rounded-full border border-navy text-navy font-body hover:bg-navy hover:text-white transition-colors"
-          >
             Register as Beneficiary
-          </Link>
+          </a>
         </div>
       </section>
 

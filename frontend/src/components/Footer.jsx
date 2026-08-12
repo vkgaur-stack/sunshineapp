@@ -3,7 +3,11 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import SunriseArc from './SunriseArc';
+import DonateButton from './DonateButton';
 import { api } from '../lib/api';
+
+// Registration now happens entirely inside the Beneficiary module.
+const BENEFICIARY_URL = 'https://www.sunshinesocial.org/Beneficiary/views/shared/login.php';
 
 // Converted from an async Server Component to client-side fetching for
 // static export (no Node.js server available to run this at request
@@ -36,6 +40,7 @@ export default function Footer() {
             Govt. Registered NGO
             {settings?.eightyGNumber ? ` · 80G: ${settings.eightyGNumber}` : ' · 80G Tax Exemption'}
           </p>
+          <DonateButton id="footer" className="mt-4" />
         </div>
 
         <div>
@@ -46,8 +51,11 @@ export default function Footer() {
             <li><Link href="/about" className="hover:underline">About Us</Link></li>
             <li><Link href="/services" className="hover:underline">Our Services</Link></li>
             <li><Link href="/impact" className="hover:underline">Our Impact</Link></li>
-            <li><Link href="/register" className="hover:underline">Register as Beneficiary</Link></li>
-            <li><Link href="/appointments" className="hover:underline">Book an Appointment</Link></li>
+            <li>
+              <a href={BENEFICIARY_URL} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                Register as Beneficiary
+              </a>
+            </li>
           </ul>
         </div>
 

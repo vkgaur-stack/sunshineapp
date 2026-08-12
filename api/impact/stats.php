@@ -5,39 +5,40 @@ require_once __DIR__ . '/../lib/response.php';
 applyCommonHeaders();
 requireMethod('GET');
 
-// Live-computed impact stats — every figure calculated directly from real
-// records so it can never drift out of sync with what actually happened.
-// Mirrors impact.controller.js from the Node build.
+// Impact metrics are entered manually by an admin each month (see
+// /admin > Impact) rather than live-computed, so the public page always
+// shows a deliberate, reviewed snapshot instead of raw in-progress
+// database counts. Pass ?month=&year= to fetch a specific month; with no
+// params, the most recently entered month is returned.
 $db = getDb();
 
-$totalBeneficiaries = (int) $db->query('SELECT COUNT(*) AS cnt FROM beneficiaries')->fetch()['cnt'];
+$month = isset($_GET['month']) ? (int) $_GET['month'] : null;
+$year = isset($_GET['year']) ? (int) $_GET['year'] : null;
 
-$beneficiariesServed = (int) $db->query("
-    SELECT COUNT(DISTINCT beneficiary_id) AS cnt FROM appointments WHERE status = 'COMPLETED'
-")->fetch()['cnt'];
+if ($month && $year) {
+    $stmt = $db->prepare('SELECT * FROM impact_metrics WHERE metric_month = ? AND metric_year = ?');
+    $stmt->execute([$month, $year]);
+} else {
+    $stmt = $db->query('SELECT * FROM impact_metrics ORDER BY metric_year DESC, metric_month DESC LIMIT 1');
+}
 
-$sessionsCompleted = (int) $db->query("
-    SELECT COUNT(*) AS cnt FROM appointments WHERE status = 'COMPLETED'
-")->fetch()['cnt'];
+$row = $stmt->fetch();
 
-$campsHeld = (int) $db->query('SELECT COUNT(*) AS cnt FROM camps WHERE end_at < NOW()')->fetch()['cnt'];
-
-$citiesServed = (int) $db->query('SELECT COUNT(DISTINCT city) AS cnt FROM beneficiaries')->fetch()['cnt'];
-
-$couponsRedeemedRow = $db->query("
-    SELECT COUNT(*) AS cnt, COALESCE(SUM(value_in_paise), 0) AS total_paise
-    FROM coupons WHERE status = 'REDEEMED'
-")->fetch();
-$couponsRedeemed = (int) $couponsRedeemedRow['cnt'];
-$subsidyDeliveredInRupees = (int) round($couponsRedeemedRow['total_paise'] / 100);
+if (!$row) {
+    jsonResponse(['found' => false, 'metrics' => null]);
+}
 
 jsonResponse([
-    'totalBeneficiaries' => $totalBeneficiaries,
-    'beneficiariesServed' => $beneficiariesServed,
-    'sessionsCompleted' => $sessionsCompleted,
-    'campsHeld' => $campsHeld,
-    'citiesServed' => $citiesServed,
-    'couponsRedeemed' => $couponsRedeemed,
-    'subsidyDeliveredInRupees' => $subsidyDeliveredInRupees,
-    'lastUpdated' => gmdate('Y-m-d\TH:i:s.000\Z'),
+    'found' => true,
+    'metrics' => [
+        'month' => (int) $row['metric_month'],
+        'year' => (int) $row['metric_year'],
+        'beneficiariesServed' => (int) $row['beneficiaries_served'],
+        'sessionsCompleted' => (int) $row['sessions_completed'],
+        'campsHeld' => (int) $row['camps_held'],
+        'subsidyDeliveredInRupees' => (int) $row['subsidy_delivered_in_rupees'],
+        'citiesServed' => (int) $row['cities_served'],
+        'couponsRedeemed' => (int) $row['coupons_redeemed'],
+        'updatedAt' => $row['updated_at'],
+    ],
 ]);

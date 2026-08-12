@@ -75,8 +75,18 @@ export const api = {
   adminCreateCamp: (token, payload) =>
     apiRequest('/admin/camps/create.php', { method: 'POST', body: payload, token }),
 
-  // Impact — live, auto-calculated
-  getImpactStats: () => apiRequest('/impact/stats.php'),
+  // Impact — manually entered by admin each month, shown by month/year
+  getImpactStats: (month, year) => {
+    const params = new URLSearchParams();
+    if (month) params.set('month', month);
+    if (year) params.set('year', year);
+    const qs = params.toString();
+    return apiRequest(`/impact/stats.php${qs ? `?${qs}` : ''}`);
+  },
+  getImpactMonths: () => apiRequest('/impact/months.php'),
+  adminListImpactMetrics: (token) => apiRequest('/admin/impact/list.php', { token }),
+  adminUpsertImpactMetrics: (token, payload) =>
+    apiRequest('/admin/impact/upsert.php', { method: 'POST', body: payload, token }),
 
   // Coupons
   adminListCoupons: (token, status) =>
