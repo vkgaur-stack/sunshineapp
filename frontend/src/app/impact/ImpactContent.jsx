@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { api } from '../../lib/api';
+import ImpactTrends from '../../components/ImpactTrends';
 
 const monthNames = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -11,12 +12,16 @@ const monthNames = [
 // Impact numbers are entered manually by an admin each month (see
 // /admin > Impact) rather than live-computed, so what's shown here is
 // always a deliberate, reviewed snapshot. Visitors can browse past months
-// via the selector below.
+// via the selector below — the cards on the left update to that month,
+// and the trend charts on the right (which always show full history)
+// scroll to and highlight the same month.
 export default function ImpactContent() {
   const [months, setMonths] = useState([]); // [{month, year}, ...] newest first
   const [selected, setSelected] = useState(null); // {month, year}
   const [data, setData] = useState(null);
   const [status, setStatus] = useState('loading'); // loading | ready | empty
+  const [history, setHistory] = useState([]);
+  const [totals, setTotals] = useState(null);
 
   useEffect(() => {
     api.getImpactMonths()
@@ -29,6 +34,14 @@ export default function ImpactContent() {
         }
       })
       .catch(() => setStatus('empty'));
+
+    api.getImpactHistory()
+      .then(({ history }) => setHistory(history || []))
+      .catch(() => setHistory([]));
+
+    api.getImpactTotals()
+      .then(({ totals }) => setTotals(totals))
+      .catch(() => setTotals(null));
   }, []);
 
   useEffect(() => {
@@ -105,32 +118,43 @@ export default function ImpactContent() {
           </div>
         )}
 
-        {status === 'ready' && data && (
-          <>
-            <div className="grid gap-4 md:grid-cols-3">
-              {metrics.map((metric) => (
-                <div key={metric.label} className="rounded-soft border border-sun-soft p-6 text-center bg-white">
-                  <p className="font-display text-3xl text-clay">{metric.value}</p>
-                  <p className="mt-2 text-sm text-ink/70">{metric.label}</p>
+        <div className="grid gap-8 lg:grid-cols-2 items-start">
+          {/* LEFT: selected month's cards */}
+          <div>
+            {status === 'ready' && data && (
+              <>
+                <div className="grid gap-4 sm:grid-cols-3">
+                  {metrics.map((metric) => (
+                    <div key={metric.label} className="rounded-soft border border-sun-soft p-6 text-center bg-white">
+                      <p className="font-display text-3xl text-clay">{metric.value}</p>
+                      <p className="mt-2 text-sm text-ink/70">{metric.label}</p>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-            <p className="mt-6 text-xs text-ink/40">
-              {monthNames[data.month - 1]} {data.year} · Last updated:{' '}
-              {new Date(data.updatedAt).toLocaleString('en-IN')}
-            </p>
-          </>
-        )}
+                <p className="mt-6 text-xs text-ink/40">
+                  {monthNames[data.month - 1]} {data.year} · Last updated:{' '}
+                  {new Date(data.updatedAt).toLocaleString('en-IN')}
+                </p>
+              </>
+            )}
 
-        {status === 'loading' && (
-          <p className="text-sm text-ink/60">Loading impact data…</p>
-        )}
+            {status === 'loading' && (
+              <p className="text-sm text-ink/60">Loading impact data…</p>
+            )}
 
-        {status === 'empty' && (
-          <p className="text-sm text-ink/60">
-            Impact data for this period will be updated soon — check back shortly.
-          </p>
-        )}
+            {status === 'empty' && (
+              <p className="text-sm text-ink/60">
+                Impact data for this period will be updated soon — check back shortly.
+              </p>
+            )}
+          </div>
+
+          {/* RIGHT: all-time trend, one mini chart per metric */}
+          <div>
+            <p className="font-display text-lg text-navy mb-3">All-Time Trend</p>
+            <ImpactTrends history={history} selected={selected} totals={totals} />
+          </div>
+        </div>
       </section>
 
       <section className="bg-teal-tint py-14">

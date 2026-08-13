@@ -84,6 +84,8 @@ export const api = {
     return apiRequest(`/impact/stats.php${qs ? `?${qs}` : ''}`);
   },
   getImpactMonths: () => apiRequest('/impact/months.php'),
+  getImpactHistory: () => apiRequest('/impact/history.php'),
+  getImpactTotals: () => apiRequest('/impact/totals.php'),
   adminListImpactMetrics: (token) => apiRequest('/admin/impact/list.php', { token }),
   adminUpsertImpactMetrics: (token, payload) =>
     apiRequest('/admin/impact/upsert.php', { method: 'POST', body: payload, token }),

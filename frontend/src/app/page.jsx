@@ -23,6 +23,7 @@ const problems = [
 export default function HomePage() {
   const [camps, setCamps] = useState([]);
   const [feed, setFeed] = useState(null);
+  const [impactTotals, setImpactTotals] = useState(null);
 
   useEffect(() => {
     api.listUpcomingCamps()
@@ -32,7 +33,19 @@ export default function HomePage() {
     api.getSocialFeed()
       .then(setFeed)
       .catch(() => setFeed({ facebook: [], instagram: [] }));
+
+    api.getImpactTotals()
+      .then(({ totals }) => setImpactTotals(totals))
+      .catch(() => setImpactTotals(null));
   }, []);
+
+  const impactSnapshot = impactTotals
+    ? [
+        { label: 'Beneficiaries Served', value: `${impactTotals.beneficiariesServed}+` },
+        { label: 'Sessions Completed', value: String(impactTotals.sessionsCompleted) },
+        { label: 'Subsidy Delivered', value: `₹${impactTotals.subsidyDeliveredInRupees.toLocaleString('en-IN')}` },
+      ]
+    : [];
 
   const mediaPosts = feed
     ? [...feed.facebook.map((p) => ({ ...p, platform: 'Facebook' })), ...feed.instagram.map((p) => ({ ...p, platform: 'Instagram' }))]
@@ -87,6 +100,32 @@ export default function HomePage() {
 
         <SunriseArc className="absolute -bottom-1 left-0 w-full h-16 text-cream" />
       </section>
+
+      {/* IMPACT SNAPSHOT — all-time totals, kept compact (3 headline metrics,
+          not the full 6 from the Impact page) so it doesn't compete with
+          the rest of the home page for space. Only renders once an admin
+          has entered at least one month via /admin > Impact. */}
+      {impactTotals && impactTotals.monthsRecorded > 0 && (
+        <section className="container-page py-12">
+          <div className="flex items-end justify-between flex-wrap gap-2">
+            <div>
+              <p className="font-body text-sm uppercase tracking-widest text-teal">Our Impact</p>
+              <h2 className="font-display text-2xl text-navy mt-1">Our Impact So Far</h2>
+            </div>
+            <Link href="/impact" className="text-sm text-teal hover:underline flex-shrink-0">
+              See full impact →
+            </Link>
+          </div>
+          <div className="mt-6 grid gap-4 sm:grid-cols-3">
+            {impactSnapshot.map((metric) => (
+              <div key={metric.label} className="rounded-soft border border-sun-soft bg-white p-5 text-center">
+                <p className="font-display text-2xl md:text-3xl text-clay">{metric.value}</p>
+                <p className="mt-1 text-sm text-ink/70">{metric.label}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* UPCOMING CAMPS */}
       {camps.length > 0 && (
